@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pedro – English VR</title>
+<style>
+:root{color-scheme:dark;--bg:#05070d;--fg:#eaf1ff;--acc:#f5a623;--panel:#0b1220}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,sans-serif;overflow:hidden}
+#stage{display:flex;height:100%}
+body:not(.vr) #stage{height:calc(100% - 100px)}
+.eye{flex:1;position:relative;overflow:hidden;min-width:0;background:#8fb0d0}
+body:not(.vr) .eye+.eye{display:none}
+body.vr .eye+.eye{border-left:3px solid #000}
+.eye::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.85) 100%)}
+.av{position:absolute;inset:0}
+body.vr .eye:first-child .av{transform:translateX(4px)}
+body.vr .eye+.eye .av{transform:translateX(-4px)}
+.av svg{width:100%;height:100%;display:block}
+.person{animation:bob 4s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4px)}}
+.lid{transform-box:fill-box;transform-origin:50% 0;transform:scaleY(0);transition:transform .06s}
+.hint,.sub,.mic{position:absolute;left:8%;right:8%;text-align:center;z-index:2;border-radius:10px;background:rgba(0,0,0,.5);padding:5px 8px;font-size:clamp(11px,2.4vw,15px);line-height:1.3}
+.hint{top:12px;color:#ffd9a0}
+.sub{bottom:34px;font-size:clamp(12px,2.8vw,17px)}
+.sub i{display:block;color:#9fe3b0;font-style:normal;font-size:.85em}
+.mic{bottom:6px;padding:2px 8px;font-size:clamp(10px,2vw,13px);color:#cfe}
+.mic.on{background:rgba(200,30,30,.7);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.6}}
+#ctl{position:fixed;left:0;right:0;bottom:0;height:100px;padding:8px;background:var(--panel);display:flex;flex-direction:column;gap:6px}
+body.vr #ctl{display:none}
+#chips{display:flex;gap:6px;overflow-x:auto}
+button{font:inherit;color:var(--fg);background:#1c2b4a;border:1px solid #2f4673;border-radius:18px;padding:6px 12px;white-space:nowrap;cursor:pointer}
+#row{display:flex;gap:6px}
+#txt{flex:1;min-width:0;background:#0f1a30;color:var(--fg);border:1px solid #2f4673;border-radius:18px;padding:6px 12px;font:inherit}
+#tog{position:fixed;top:4px;left:50%;transform:translateX(-50%);z-index:5;opacity:.5;font-size:12px;padding:3px 10px}
+#ov{position:fixed;inset:0;z-index:10;background:linear-gradient(#0b1220,#16294d);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center}
+#ov[hidden]{display:none}
+#ov h1{font-size:22px}
+#ov p{max-width:460px;font-size:14px;opacity:.85;line-height:1.45}
+#ov button{font-size:16px;padding:10px 22px;background:var(--acc);color:#111;border:0;font-weight:700}
+#ov button.s{background:#1c2b4a;color:var(--fg);border:1px solid #2f4673;font-weight:400}
+</style>
+</head>
+<body>
+<div id="ov">
+  <h1>🥽 Practica inglés con Pedro</h1>
+  <p>1) Gira el celular en horizontal.<br>2) Acepta el permiso del micrófono.<br>3) Colócalo en los lentes portacelular.<br>Pedro habla y te pregunta; <b>toca la pantalla</b> para responder. Luego pregúntale tú su nombre, edad y dónde vive. Recomendado: Chrome en Android.</p>
+  <button id="bvr">Modo VR (lentes)</button>
+  <button id="b2d" class="s">Pantalla normal</button>
+</div>
+<button id="tog">VR / 2D</button>
+<div id="stage">
+  <div class="eye"><div class="av"></div><div class="hint"></div><div class="sub"></div><div class="mic"></div></div>
+  <div class="eye"><div class="av"></div><div class="hint"></div><div class="sub"></div><div class="mic"></div></div>
+</div>
+<div id="ctl">
+  <div id="chips">
+    <button>What's your name?</button><button>How old are you?</button><button>Where do you live?</button>
+  </div>
+  <div id="row"><input id="txt" placeholder="O escribe en inglés aquí…" autocomplete="off"><button id="send">Enviar</button></div>
+</div>
+<script>
+const AV=`<svg viewBox="0 0 300 380" preserveAspectRatio="xMidYMid slice">
+<rect width="300" height="380" fill="#8fb0d0"/><ellipse cx="60" cy="60" rx="90" ry="28" fill="#fff" opacity=".55"/><ellipse cx="250" cy="40" rx="70" ry="22" fill="#fff" opacity=".5"/><ellipse cx="150" cy="250" rx="260" ry="40" fill="#e9eef3" opacity=".5"/>
+<g class="person">
+<path d="M20 380Q28 292 112 276L150 292L188 276Q272 292 280 380Z" fill="#1d3768"/>
+<rect x="131" y="222" width="38" height="64" fill="#dba283"/>
+<path d="M126 278L150 302L174 278L170 268L130 268Z" fill="#d49a7b"/>
+<path d="M150 302V380" stroke="#162b52" stroke-width="3"/><circle cx="150" cy="324" r="2.6" fill="#0f1f3d"/><circle cx="150" cy="348" r="2.6" fill="#0f1f3d"/>
+<ellipse cx="94" cy="172" rx="7" ry="12" fill="#e5ab8c"/><ellipse cx="206" cy="172" rx="7" ry="12" fill="#e5ab8c"/>
+<ellipse cx="150" cy="165" rx="56" ry="68" fill="#eebb9c"/>
+<path d="M94 150C86 100 118 78 152 80C190 78 216 98 208 150C204 128 190 112 168 108C140 104 112 112 104 140C100 146 98 150 94 150Z" fill="#8a4a2a"/>
+<path d="M118 102C128 68 176 60 202 92C186 84 150 82 118 102Z" fill="#a35c36"/>
+<ellipse cx="127" cy="165" rx="11" ry="9" fill="#fff"/><ellipse cx="173" cy="165" rx="11" ry="9" fill="#fff"/>
+<circle cx="127" cy="165" r="5.5" fill="#3b2a20"/><circle cx="173" cy="165" r="5.5" fill="#3b2a20"/>
+<circle cx="125" cy="163" r="1.6" fill="#fff"/><circle cx="171" cy="163" r="1.6" fill="#fff"/>
+<ellipse class="lid" cx="127" cy="165" rx="12.5" ry="10.5" fill="#eebb9c"/><ellipse class="lid" cx="173" cy="165" rx="12.5" ry="10.5" fill="#eebb9c"/>
+<path d="M112 151Q127 143 142 150M158 150Q173 143 188 151" stroke="#6b3a20" stroke-width="4" fill="none" stroke-linecap="round"/>
+<path d="M150 170Q145 190 150 193Q156 195 158 192" stroke="#c98a6a" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path class="mouth" d="M130 213Q150 211 170 213Q150 219 130 213Z" fill="#c47468" stroke="#b9605a" stroke-width="1.5" stroke-linejoin="round"/>
+</g>
+<rect x="14" y="346" width="64" height="22" rx="4" fill="#0e1a2b" opacity=".9"/><text x="24" y="361" fill="#fff" font-size="13" font-family="sans-serif">Pedro</text>
+</svg>`;
+const $$=s=>[...document.querySelectorAll(s)], $=s=>document.querySelector(s);
+$$('.av').forEach(a=>a.innerHTML=AV);
+const mouths=$$('.mouth'), lids=$$('.lid');
+const setAll=(sel,h)=>$$(sel).forEach(e=>e.innerHTML=h);
+
+/* Boca y parpadeo */
+let talking=false,tgt=0,cur=0,tick=0;
+function setMouth(o){
+  const d=`M130 213Q150 ${211-o} 170 213Q150 ${219+o*20} 130 213Z`;
+  mouths.forEach(m=>{m.setAttribute('d',d);m.setAttribute('fill',o>.12?'#5a1f24':'#c47468')});
+}
+function loop(t){
+  if(talking&&t>tick){tgt=.25+Math.random()*.75;tick=t+90+Math.random()*80}
+  if(!talking)tgt=0;
+  cur+=(tgt-cur)*.35; setMouth(cur); requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+function blink(){
+  lids.forEach(l=>l.style.transform='scaleY(1)');
+  setTimeout(()=>lids.forEach(l=>l.style.transform='scaleY(0)'),130);
+  setTimeout(blink,2000+Math.random()*3500);
+}
+blink();
+
+/* Textos en pantalla */
+let said='',heard='',state='idle',name='',age=null,city='';
+const hints={name:'Di: "My name is …"',age:'Di: "I am … years old"',live:'Di: "I live in …"',free:'Pregúntale: "What\'s your name?" · "How old are you?" · "Where do you live?"'};
+function render(){
+  setAll('.sub',(said?'<b>Pedro:</b> '+said:'')+(heard?'<i>Tú: '+heard+'</i>':''));
+  setAll('.hint',hints[state]||'');
+}
+function setMic(t,on){$$('.mic').forEach(m=>{m.textContent=t;m.classList.toggle('on',!!on)})}
+
+/* Voz de Pedro */
+function pickVoice(){
+  const v=speechSynthesis.getVoices().filter(x=>/^en/i.test(x.lang));
+  return v.find(x=>/daniel|alex|david|guy|mark|aaron|fred|male|google us/i.test(x.name))||v.find(x=>/en[-_]US/i.test(x.lang))||v[0];
+}
+function say(text,after){
+  speechSynthesis.cancel(); said=text; render(); setMic('🔊 Pedro habla…');
+  const u=new SpeechSynthesisUtterance(text.replace('Concepción','Concepcion'));
+  u.lang='en-US';u.rate=.88;u.pitch=.85;
+  const v=pickVoice(); if(v)u.voice=v;
+  let done=false; const end=()=>{if(done)return;done=true;talking=false;setMic('👆 Toca para hablar');after&&setTimeout(after,250)};
+  u.onend=end;u.onerror=end; talking=true; speechSynthesis.speak(u);
+}
+
+/* Escucha */
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let listening=false;
+function listen(){
+  if(!SR){setMic('Tu navegador no tiene micrófono web: escribe abajo');return}
+  if(listening||talking||state==='idle')return;
+  const r=new SR();r.lang='en-US';r.interimResults=false;r.maxAlternatives=1;let got=false;
+  r.onstart=()=>{listening=true;setMic('🎙 Te escucho… / I\'m listening',true)};
+  r.onresult=e=>{got=true;const t=e.results[0][0].transcript;heard=t;render();handle(t)};
+  r.onerror=e=>setMic(e.error==='not-allowed'?'⚠ Permite el micrófono':'👆 Toca para hablar');
+  r.onend=()=>{listening=false;if(!got)setMic('👆 Toca la pantalla para hablar')};
+  try{r.start()}catch(e){}
+}
+
+/* Conversación */
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const ones={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19};
+const tens={twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+function getAge(s){
+  const d=s.match(/\d+/); if(d)return +d[0];
+  let n=0,f=false; s.split(/[\s-]+/).forEach(w=>{if(ones[w]){n+=ones[w];f=true}else if(tens[w]){n+=tens[w];f=true}});
+  return f?n:null;
+}
+function getName(t){
+  const m=t.match(/(?:my name is|i am|i'm|im|this is|call me|it is|it's)\s+([a-záéíóúñ]+)/i);
+  return cap((m?m[1]:t.trim().split(/\s+/).pop()).replace(/[^a-záéíóúñ]/gi,''));
+}
+function getCity(t){
+  const m=t.match(/(?:live in|living in|from|in)\s+([^.,!?]+)/i);
+  return cap((m?m[1]:t).trim());
+}
+function handle(t){
+  const s=t.toLowerCase();
+  if(state==='name'){name=getName(t);state='age';say(`Nice to meet you, ${name}! How old are you?`,listen)}
+  else if(state==='age'){
+    const n=getAge(s);
+    if(n==null){say("Sorry, I didn't get your age. How old are you? Say a number, please.",listen);return}
+    age=n;state='live';say(`${n}! Great. And where do you live?`,listen);
+  }
+  else if(state==='live'){city=getCity(t);state='free';say(`${city}! That sounds nice. Now it's your turn. Ask me my name, my age, or where I live.`,listen)}
+  else if(state==='free'){
+    let r;
+    if(/name/.test(s))r="My name is Pedro.";
+    else if(/old|age/.test(s))r="I'm thirty-five years old.";
+    else if(/where|live|from|city/.test(s))r="I live in Concepción, Chile.";
+    else if(/how are you/.test(s))r="I'm doing great, thank you! And you?";
+    else if(/bye/.test(s))r="Goodbye! See you soon.";
+    else if(/hello|\bhi\b|hey/.test(s))r="Hello! Nice to see you.";
+    else r="Sorry, I didn't understand. Try: What's your name? How old are you? Where do you live?";
+    say(r,/bye/.test(s)?null:listen);
+  }
+  render();
+}
+
+/* Controles */
+function start(vr){
+  document.body.classList.toggle('vr',vr); $('#ov').hidden=true;
+  if(vr){
+    try{const p=document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();p&&p.catch&&p.catch(()=>{})}catch(e){}
+    try{const q=screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape');q&&q.catch&&q.catch(()=>{})}catch(e){}
+  }
+  speechSynthesis.getVoices(); state='name'; render(); const go=()=>
+  say("Hi! I'm Pedro. I'm thirty-five years old, and I live in Concepción, Chile. What's your name?",listen);
+  const md=navigator.mediaDevices;
+  if(md&&md.getUserMedia)md.getUserMedia({audio:true}).then(s=>{s.getTracks().forEach(t=>t.stop());go()}).catch(()=>{go();setTimeout(()=>setMic('⚠ Micrófono bloqueado: actívalo en los permisos del sitio'),4000)});else go();
+}
+$('#bvr').onclick=()=>start(true);
+$('#b2d').onclick=()=>start(false);
+$('#tog').onclick=()=>document.body.classList.toggle('vr');
+$('#stage').onclick=()=>{if(!talking&&!listening)listen()};
+function sendText(t){t=t.trim();if(!t||state==='idle')return;speechSynthesis.cancel();talking=false;heard=t;render();handle(t)}
+$('#send').onclick=()=>{sendText($('#txt').value);$('#txt').value=''};
+$('#txt').onkeydown=e=>{if(e.key==='Enter'){sendText(e.target.value);e.target.value=''}};
+$$('#chips button').forEach(b=>b.onclick=()=>sendText(b.textContent));
+</script>
+</body>
+</html>
